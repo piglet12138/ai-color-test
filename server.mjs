@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash, scryptSync, randomBytes, timingSafeEqual } from 'node:crypto';
 import { seasonsRef, catalogRef, outfitRef } from './presets.mjs';
 import { MAKEUP_VIBES, vibesFor, IMAGE_TEMPLATE } from './presets-makeup.mjs';
+import { vibeLine } from './presets-vibe.mjs';
 
 const __dir = fileURLToPath(new URL('.', import.meta.url));
 
@@ -318,6 +319,15 @@ ${b.image ? '请先看这张自拍，再综合 CV 测量诊断季型并给报告
       const b = await readBody(req);
       const colors = (b.palette || []).join(', ');
       const subj = subjectLine(b.subject);
+      if (b.image && b.atmos && b.season) {
+        // 氛围感模式：把本人放进贴合季型的氛围大片（可改背景/光线/表情/发型），保脸保性别
+        const prompt = `把画面中的这个人放进一张有氛围感的时尚人像大片，保持是本人：\n`
+          + `穿搭换成【${b.outfit || '一套协调的当季造型'}】，服装配色限定【${colors}】。\n`
+          + `氛围要求 → ${vibeLine(b.season)}。\n`
+          + `【严格保持】本人的脸型、五官比例、肤色与**性别**不变；不要换脸、不要美颜到失真、不要改变身份与性别。\n`
+          + `可以调整背景、光线、姿态与表情来贴合上述氛围。写实氛围人像摄影、浅景深虚化背景、自然布料与皮肤质感，无文字、无水印。`;
+        return sendJSON(res, 200, await editImage(b.image, prompt, '1024x1024', subj));
+      }
       if (b.image) {
         // 保脸配方（借鉴 YanAI）：硬性列举「不要改」+ 关键约束重复 + 保留皮肤纹理防身份漂移
         const prompt = `这是同一个真人，请只更换 ta 身上的服装，严格保留本人身份。\n`
@@ -407,7 +417,8 @@ ${who}
     if (req.method === 'POST' && url.pathname === '/api/portrait') {
       const b = await readBody(req);
       if (!b.image || !b.desc) return sendJSON(res, 400, { error: '缺少照片或风格' });
-      const prompt = IMAGE_TEMPLATE.replace('{desc}', b.desc);
+      let prompt = IMAGE_TEMPLATE.replace('{desc}', b.desc);
+      if (b.atmos && b.season) prompt += `\n【氛围】把成片处理成贴合季型的氛围人像 → ${vibeLine(b.season)}。可微调背景/光线/发丝以增强氛围，但脸与性别保持是本人。`;
       return sendJSON(res, 200, await editImage(b.image, prompt, '1024x1024', subjectLine(b.subject)));
     }
 

@@ -268,7 +268,7 @@ $('runOutfit').onclick = async () => {
     const urls = [];
     await Promise.all(looks.map(async (lk, i) => {
       const cols = (lk.colors || []).map((c) => c.hex);
-      try { const d = await api('/api/preview', 'POST', { image: state.editImage, outfit: lk.garments, palette: cols.length ? cols : palette, subject: state.subject }); urls[i] = d.url; $('olk' + i).innerHTML = `<img src="${d.url}">`; }
+      try { const d = await api('/api/preview', 'POST', { image: state.editImage, outfit: lk.garments, palette: cols.length ? cols : palette, subject: state.subject, season: a.season, atmos: true }); urls[i] = d.url; $('olk' + i).innerHTML = `<img src="${d.url}">`; }
       catch { $('olk' + i).innerHTML = `<span style="color:#c0392b;font-size:12px">预览生成失败</span>`; }
       done++; prog.innerHTML = done < looks.length ? `<span class="mini-spin"></span> 生成上身预览 ${done}/${looks.length}…` : '✅ 完成';
     }));
@@ -317,7 +317,7 @@ async function makeupFlow(sec, label) {
         <p style="margin:6px 0 0;color:var(--muted);font-size:12px">${p.why || ''}</p></div>`).join('')}</div>`;
     const urls = [];
     await Promise.all(picks.map(async (p, i) => {
-      try { const d = await api('/api/portrait', 'POST', { image: state.editImage, desc: p.desc, subject: state.subject }); urls[i] = d.url; $('mk' + i).innerHTML = `<img src="${d.url}">`; }
+      try { const d = await api('/api/portrait', 'POST', { image: state.editImage, desc: p.desc, subject: state.subject, season: state.analysis?.season, atmos: true }); urls[i] = d.url; $('mk' + i).innerHTML = `<img src="${d.url}">`; }
       catch { $('mk' + i).innerHTML = `<span style="color:#c0392b;font-size:12px">生成失败，可重试</span>`; }
     }));
     saveHistory({ type: 'makeup', title: '氛围妆 · ' + picks.map((p) => p.name).join('/'), thumb: state.thumb, payload: { picks }, images: urls.filter(Boolean) });
