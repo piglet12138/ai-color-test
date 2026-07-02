@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 测色 · 穿搭 · 上身试穿</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <h1>你的 AI 私人色彩顾问</h1>
+  <p class="sub">上传照片、填好信息，<b>一键</b>测出色彩季型、配好穿搭，并在你本人身上预览上身效果。</p>
+  <a class="demo-link" href="app.html" style="background:#426957;color:#fff;border-color:#426957">📱 打开完整 App（StyleLab）→</a>
+  <a class="demo-link" href="demo.html">先看一个示例 →</a>
+  <a class="demo-link" href="poster.html">生成色彩测试图 →</a>
+  <a class="demo-link" href="lab.html">花纹/发色/发型/妆容/首饰测试 →</a>
+</header>
+
+<main>
+  <ol class="steps">
+    <li data-step="1" class="active">① 测色</li>
+    <li data-step="2">② 搭配</li>
+    <li data-step="3">③ 上身试穿</li>
+  </ol>
+
+  <!-- 一站式输入 -->
+  <section id="s1" class="card">
+    <h2>① 上传照片，填好信息，一键开始</h2>
+    <p class="hint">建议自然光、素颜或淡妆、露出脸；想看「上身试穿」请上传<b>半身或全身照</b>。性别/体型留空也行，AI 会看图判断。</p>
+
+    <label id="drop" class="dropzone">
+      <input id="file" type="file" accept="image/*" hidden>
+      <span id="dropText">点击或拖拽上传照片</span>
+    </label>
+    <div id="thumbWrap" class="hidden" style="margin-top:14px"><img id="thumb" class="demo-selfie" alt="预览"></div>
+
+    <div class="grid" style="margin-top:18px">
+      <label>性别
+        <select id="pGender"><option value="">AI 判断</option><option>女</option><option>男</option></select>
+      </label>
+      <label>体型
+        <select id="pBuild"><option value="">AI 判断</option><option>偏瘦</option><option>匀称</option><option>丰满</option><option>健壮</option></select>
+      </label>
+      <label>身高（cm）<input id="pHeight" type="number" placeholder="如 165"></label>
+      <label>体重（kg）<input id="pWeight" type="number" placeholder="如 52"></label>
+      <label>场合
+        <select id="occasion"><option>通勤</option><option>约会</option><option>休闲日常</option><option>正式场合</option><option>度假</option></select>
+      </label>
+      <label>预算（元）<input id="budget" type="number" value="500"></label>
+      <label style="grid-column:1/3">想补充点什么？（选填）
+        <input id="note" placeholder="如：穿正红显气色 / 穿橘黄显疲惫">
+      </label>
+    </div>
+
+    <button id="btnStart" class="primary">✨ 一键测色 + 搭配 + 上身试穿</button>
+    <div id="progress" class="progress hidden"></div>
+    <div id="restoredBar" class="restored hidden"></div>
+  </section>
+
+  <section id="r1" class="card result hidden">
+    <h2>你的色彩报告</h2>
+    <div id="diagOut"></div>
+  </section>
+
+  <section id="r2" class="card result hidden">
+    <h2>为你准备的搭配</h2>
+    <div id="outfitOut"></div>
+  </section>
+
+  <section id="r3" class="card result hidden">
+    <h2>上身试穿</h2>
+    <div id="previewOut"></div>
+  </section>
+</main>
+
+<footer>上传照片 · 测色 · 搭配 · 上身试穿　—　AI 私人色彩顾问 Demo</footer>
+
+<canvas id="work" hidden></canvas>
+<script src="auth.js"></script>
+<script src="color.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

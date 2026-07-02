@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的历史 · AI 形象测试</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <h1>我的历史记录</h1>
+  <p class="sub">你做过的测色、穿搭、形象测试都会自动保存在这里。</p>
+  <a class="demo-link" href="index.html">← 回到首页</a>
+</header>
+<main>
+  <section class="card">
+    <div id="histOut">加载中…</div>
+  </section>
+  <div id="detailBox" style="display:none"></div>
+</main>
+<footer>AI 形象测试 · 我的历史</footer>
+<script src="auth.js"></script>
+<script>
+const TL = { outfit: '穿搭造型', color: '色彩测试', pattern: '花纹', haircolor: '发色', hairstyle: '发型', makeup: '妆容', jewelry: '首饰' };
+const fmt = (ts) => { const d = new Date(ts); const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; };
+let ITEMS = [], FILTER = '';
+async function load() {
+  await CSDAuth.ready;
+  const out = document.getElementById('histOut');
+  if (!CSDAuth.user) { out.innerHTML = '<p class="hint">请先登录查看你的历史。</p>'; await CSDAuth.requireLogin(); return load(); }
+  try { ITEMS = (await CSDAuth.api('/api/history')).items || []; render(); }
+  catch (e) { out.innerHTML = `<div class="err">加载失败：${e.message}</div>`; }
+}
+function render() {
+  const out = document.getElementById('histOut');
+  if (!ITEMS.length) { out.innerHTML = '<p class="hint">还没有记录。去<a href="index.html">首页</a>做一次测试吧～</p>'; return; }
+  const counts = {}; ITEMS.forEach((e) => counts[e.type] = (counts[e.type] || 0) + 1);
+  const chip = (v, l, n, on) => `<button class="demo-link" style="${on ? 'background:#6E7F80;color:#fff;border-color:#6E7F80;' : ''}margin:0 8px 8px 0" data-f="${v}">${l} ${n}</button>`;
+  const chips = `<div style="margin-bottom:14px">${chip('', '全部', ITEMS.length, !FILTER)}${Object.keys(counts).map((t) => chip(t, TL[t] || t, counts[t], FILTER === t)).join('')}</div>`;
+  const list = (FILTER ? ITEMS.filter((e) => e.type === FILTER) : ITEMS);
+  out.innerHTML = chips + list.map((e) => `
+    <div class="hist-item" data-id="${e.id}" style="cursor:pointer">
+      ${e.thumb ? `<img class="h-thumb" src="${e.thumb}">` : (e.images && e.images[0] ? `<img class="h-thumb" src="${e.images[0]}">` : '')}
+      <div class="h-body"><div class="h-title"><span class="htag">${TL[e.type] || e.type}</span>${e.title || ''}</div>
+        <div class="h-meta">${fmt(e.ts)} · 点击查看详情 ›</div></div></div>`).join('');
+  out.querySelectorAll('[data-f]').forEach((b) => b.onclick = () => { FILTER = b.dataset.f; render(); });
+  out.querySelectorAll('.hist-item').forEach((el) => el.onclick = () => detail(el.dataset.id));
+}
+function detail(id) {
+  const e = ITEMS.find((x) => x.id === id); if (!e) return;
+  const pl = e.payload || {}; const pal = (arr) => `<div class="swatches">${arr.map((c) => `<div class="sw" style="background:${c.hex}"><span class="hex">${c.name}</span></div>`).join('')}</div>`;
+  let body = '';
+  if (e.type === 'color' && pl.season) body = `<p><b>季型：</b>${pl.season} · ${pl.skin_tone || ''}</p>${pl.recommend ? '<div class="lab">推荐色</div>' + pal(pl.recommend) : ''}${pl.avoid ? '<div class="lab" style="margin-top:8px">避免色</div>' + pal(pl.avoid) : ''}<p style="color:#666;margin-top:8px">${pl.summary || ''}</p>`;
+  else if (e.type === 'outfit' && pl.looks) body = pl.looks.map((lk) => `<div style="margin-bottom:10px"><b>${lk.title || ''}</b><div style="margin:4px 0">${(lk.colors || []).map((c) => `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:8px"><i style="width:12px;height:12px;border-radius:3px;background:${c.hex};display:inline-block"></i>${c.name}</span>`).join('')}</div><p style="color:#666;margin:0">${lk.analysis || ''}</p></div>`).join('');
+  else if (e.type === 'makeup' && pl.picks) body = pl.picks.map((p) => `<p><b>${p.name}</b> <span style="color:#888">${p.vibe || ''}</span><br><span style="color:#666">${p.why || ''}</span></p>`).join('');
+  else if (pl.options) body = `<p>${pl.options.map((o) => o.name).join('、')}</p>`;
+  const box = document.getElementById('detailBox');
+  box.innerHTML = `<div class="card" style="max-width:620px;margin:0 auto;padding:20px;text-align:left">
+    <h2>${TL[e.type] || e.type} <span style="font-size:13px;color:#999;font-weight:400">${fmt(e.ts)}</span></h2>
+    <p style="font-weight:600">${e.title || ''}</p>
+    ${(e.images || []).map((u) => `<img src="${u}" style="width:100%;border-radius:10px;margin-bottom:10px">`).join('')}
+    ${body}
+    <div style="margin-top:14px;display:flex;gap:10px"><button class="demo-link" id="dClose">返回列表</button><button class="demo-link" id="dDel" style="color:#c0392b;border-color:#e0b4b4">删除</button></div></div>`;
+  document.getElementById('histOut').style.display = 'none'; box.style.display = 'block';
+  document.getElementById('dClose').onclick = () => { box.style.display = 'none'; document.getElementById('histOut').style.display = ''; };
+  document.getElementById('dDel').onclick = async () => { if (!confirm('删除这条记录？')) return; await CSDAuth.api('/api/history?id=' + id, 'DELETE'); ITEMS = ITEMS.filter((x) => x.id !== id); box.style.display = 'none'; document.getElementById('histOut').style.display = ''; render(); };
+}
+load();
+</script>
+</body>
+</html>

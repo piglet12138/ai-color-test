@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 色彩测试 · 上传证件照</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <h1>AI 色彩测试</h1>
+  <p class="sub">上传一张证件照 / 正面照，生成一张<b>专属个人色彩分析图</b>——看看哪些颜色穿在你身上最显气色。</p>
+  <a class="demo-link" href="lab.html">花纹/发色/发型/妆容/首饰测试 →</a>
+  <a class="demo-link" href="index.html">试试穿搭试穿 →</a>
+</header>
+
+<main>
+  <section id="s1" class="card">
+    <h2>上传你的证件照</h2>
+    <p class="hint">建议：自然光、正面、露出脸与发际、纯色背景。生成约需 1 分钟。</p>
+    <label id="drop" class="dropzone">
+      <input id="file" type="file" accept="image/*" hidden>
+      <span id="dropText">点击或拖拽上传照片</span>
+    </label>
+    <div id="thumbWrap" class="hidden" style="margin-top:14px"><img id="thumb" class="demo-selfie" alt="预览"></div>
+    <div class="grid" style="margin-top:16px;grid-template-columns:1fr 1fr">
+      <label>性别<select id="pGender"><option value="">AI 判断</option><option>女</option><option>男</option></select></label>
+    </div>
+    <button id="btnStart" class="primary">✨ 生成我的色彩测试图</button>
+    <div id="progress" class="progress hidden"></div>
+  </section>
+
+  <!-- 海报（可下载为图片） -->
+  <section id="result" class="card result hidden">
+    <div id="poster" class="poster">
+      <div class="poster-head">
+        <div class="poster-title">个人色彩分析</div>
+        <div class="poster-sub">找到最显你肤色的专属色彩</div>
+        <div class="tone" id="toneBox"></div>
+      </div>
+      <div id="rowRec" class="prow"></div>
+      <div id="rowNeu" class="prow"></div>
+      <div id="rowAvo" class="prow"></div>
+      <div id="makeup" class="makeup"></div>
+      <div id="summary" class="poster-foot"></div>
+      <div class="poster-mark">AI 色彩测试 · sg.yaoyuheng2001.me</div>
+    </div>
+    <div style="text-align:center;margin-top:16px">
+      <button id="btnDownload" class="primary">⬇ 保存为图片</button>
+    </div>
+  </section>
+</main>
+
+<footer>上传证件照 · 一键生成个人色彩分析图　—　AI 色彩测试 Demo</footer>
+
+<canvas id="work" hidden></canvas>
+<script src="auth.js"></script>
+<script src="color.js"></script>
+<script src="html2canvas.min.js"></script>
+<script src="poster.js"></script>
+</body>
+</html>

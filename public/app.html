@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>StyleLab · AI 私人形象顾问</title>
+<link rel="stylesheet" href="app-ui.css">
+</head>
+<body>
+<main class="phone" id="phone">
+  <div class="app" id="app">
+    <div class="statusbar" aria-hidden="true">
+      <span id="clock">9:41</span>
+      <span class="status-icons"><i class="signal"></i><i class="wifi"></i><i class="battery"></i></span>
+    </div>
+
+    <!-- 引导 1：欢迎 -->
+    <section class="screen active" data-screen="welcome">
+      <div class="topline">
+        <div class="brand"><div class="logo">形</div><div><h1>StyleLab</h1><p>AI 私人形象顾问</p></div></div>
+        <span class="mini-chip" id="welcomeAuth">登录</span>
+      </div>
+      <h2 class="headline">拍一张照片<br>读懂你的色彩与形象</h2>
+      <p class="lead">上传一次照片，AI 帮你测色、配穿搭、试花纹发色发型妆容首饰——每次结果都存进你的档案。</p>
+      <div class="card pad" style="text-align:center">
+        <div class="ai-orbit" style="width:104px;height:104px;margin:6px auto 14px;animation:none"></div>
+        <p style="color:var(--muted);font-size:13px;margin:0">测色 · 穿搭试穿 · 形象测试 · 历史档案，一个 App 全搞定。</p>
+      </div>
+      <div class="actions">
+        <button class="btn" data-go="upload">上传照片，开始 →</button>
+        <button class="btn secondary" id="welcomeLogin">已有账号，登录</button>
+      </div>
+      <div class="value-strip">
+        <div class="value"><b>01</b><span>上传一次照片</span></div>
+        <div class="value"><b>02</b><span>AI 测色建档</span></div>
+        <div class="value"><b>03</b><span>各项测试随时做</span></div>
+      </div>
+    </section>
+
+    <!-- 引导 2：上传 -->
+    <section class="screen" data-screen="upload">
+      <div class="topline"><div class="brand"><div class="logo">形</div><div><h1>建立形象档案</h1><p>拍照 / 上传 + 基础信息</p></div></div><span class="mini-chip">1 / 2</span></div>
+      <div class="card pad">
+        <div class="cap-tips">
+          <b>📸 拍好照片，测得更准</b>
+          <span>· 面朝<b>自然光</b>（窗边最佳），避免逆光、顶光、暖黄灯</span>
+          <span>· <b>素颜或淡妆</b>，关闭美颜/滤镜，用<b>原图</b>别用截图</span>
+          <span>· 正脸、露额头、表情放松</span>
+          <span>· 有条件举一张 <b>A4 白纸</b> 在下巴旁，自动校色更准</span>
+        </div>
+        <label class="a4-row"><input type="checkbox" id="a4Ref"><span>我在画面里放了 A4 白纸（开启自动白平衡校色）</span></label>
+        <div class="cap-btns">
+          <button class="btn" id="camBtn">📷 拍照</button>
+          <button class="btn secondary" id="uploadBtn">从相册上传</button>
+        </div>
+        <input id="fileInput" type="file" accept="image/*" hidden>
+        <div id="capPreview" class="hidden" style="margin-top:12px;text-align:center"><img id="thumb" class="demo-selfie"></div>
+        <div id="qcOut" class="qc-out hidden"></div>
+        <div class="field-grid" style="margin-top:12px">
+          <div class="field"><label>性别</label><select id="pGender"><option value="">AI 判断</option><option>女</option><option>男</option></select></div>
+          <div class="field"><label>体型</label><select id="pBuild"><option value="">AI 判断</option><option>偏瘦</option><option>匀称</option><option>丰满</option><option>健壮</option></select></div>
+          <div class="field"><label>身高 cm</label><input id="pHeight" type="number" inputmode="numeric" placeholder="如 165"></div>
+          <div class="field"><label>体重 kg</label><input id="pWeight" type="number" inputmode="numeric" placeholder="如 52"></div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="startAnalyze">AI 测色，生成档案 →</button>
+        <button class="btn text" data-go="welcome">返回</button>
+      </div>
+    </section>
+
+    <!-- 引导 3：分析中 -->
+    <section class="screen" data-screen="loading">
+      <div class="loading-wrap"><div>
+        <div class="ai-orbit"></div>
+        <div class="loading-copy"><h2>StyleLab 正在分析</h2><p>正在读取你的肤色、发色、冷暖与季型。</p></div>
+        <div class="analysis-steps">
+          <div class="step active"><i class="dot"></i><span>识别肤色 / 发色 / 瞳色</span></div>
+          <div class="step"><i class="dot"></i><span>判断冷暖与季型</span></div>
+          <div class="step"><i class="dot"></i><span>生成你的专属色板</span></div>
+          <div class="step"><i class="dot"></i><span>整理形象建议</span></div>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- 引导 4 / 我的档案：色彩报告 -->
+    <section class="screen" data-screen="report">
+      <div class="topline"><div class="brand"><div class="logo">形</div><div><h1>我的形象档案</h1><p id="reportSub">首次测色完成</p></div></div><span class="mini-chip">档案</span></div>
+      <div id="reportBody"></div>
+      <div class="actions">
+        <button class="btn" data-go="home">进入 App 首页 →</button>
+      </div>
+    </section>
+
+    <!-- App：首页 -->
+    <section class="screen" data-screen="home">
+      <div class="topline"><div class="brand"><div class="logo">形</div><div><h1 id="hiName">你好</h1><p>今天想测点什么？</p></div></div><span class="mini-chip" id="homeSeason">—</span></div>
+      <article class="card report-summary" id="homeProfile" role="button" data-go="report"></article>
+      <div class="section-title"><h2>形象测试</h2><span>基于你的档案照片</span></div>
+      <div class="quick-grid">
+        <button class="quick-card" data-tab="color"><span class="qi">🎨</span><b>色彩测试</b><span>专属色板 · 推荐/避免色海报</span></button>
+        <button class="quick-card" data-tab="outfit"><span class="qi">👗</span><b>穿搭试穿</b><span>季型搭配 + 真人上身</span></button>
+        <button class="quick-card" data-tab="lab"><span class="qi">💇</span><b>形象测试</b><span>花纹/发色/发型/妆容/首饰</span></button>
+        <button class="quick-card" data-tab="me"><span class="qi">🗂️</span><b>我的历史</b><span>过往结果都在这里</span></button>
+      </div>
+      <div class="section-title"><h2>最近记录</h2><span id="homeHistCount"></span></div>
+      <div id="homeHist"></div>
+    </section>
+
+    <!-- App：色彩测试 -->
+    <section class="screen" data-screen="color">
+      <div class="topline"><div class="brand"><div class="logo">形</div><div><h1>色彩测试</h1><p>专属个人色彩分析</p></div></div><span class="mini-chip">测色</span></div>
+      <div class="card pad" id="colorIntro">
+        <p class="lead" style="margin:0 0 12px">用你档案里的照片，生成一张「个人色彩分析」海报——推荐色 / 一般色 / 避免色都穿在你身上。约 1 分钟。</p>
+        <button class="btn" id="runColor">生成我的色彩测试图</button>
+        <div id="colorProg" class="chip-row" style="margin-top:12px"></div>
+      </div>
+      <div id="colorResult"></div>
+    </section>
+
+    <!-- App：穿搭试穿 -->
+    <section class="screen" data-screen="outfit">
+      <div class="topline"><div class="brand"><div class="logo">形</div><div><h1>穿搭造型</h1><p>成套配色 + 真人预览 + 点评</p></div></div><span class="mini-chip">穿搭</span></div>
+      <div class="card pad">
+        <p class="lead" style="margin:0 0 12px">用你的专属色板，生成 2-3 套成套造型——每套配色 + 真人上身预览 + 造型点评。约 2 分钟。</p>
+        <button class="btn" id="runOutfit">生成我的穿搭造型</button>
+        <div id="outfitProg" class="chip-row" style="margin-top:12px"></div>
+      </div>
+      <div id="outfitResult"></div>
+    </section>
+
+    <!-- App：形象测试 -->
+    <section class="screen" data-screen="lab">
+      <div class="topline"><div class="brand"><div class="logo">形</div><div><h1>形象测试</h1><p>看每种变化在你身上的样子</p></div></div><span class="mini-chip">形象</span></div>
+      <div class="card pad">
+        <div id="labBtns" class="tag-group" style="margin-top:0"></div>
+        <p class="lead" style="font-size:12px;margin:12px 0 0">妆容 / 首饰会按你的性别给合适方案；每项约 1 分钟。</p>
+      </div>
+      <div id="labResults"></div>
+    </section>
+
+    <!-- App：我的 -->
+    <section class="screen" data-screen="me">
+      <div class="topline"><div class="brand"><div class="logo">形</div><div><h1>我的</h1><p id="meSub">档案与历史</p></div></div><span class="mini-chip" id="meAuth">未登录</span></div>
+      <article class="card report-summary" id="meProfile"></article>
+      <div class="actions" style="margin-top:12px">
+        <button class="btn secondary" id="meReupload">重新上传照片 / 重测</button>
+        <button class="btn text" id="meLogout">退出登录</button>
+      </div>
+      <div class="section-title"><h2>历史记录</h2><span id="meHistCount"></span></div>
+      <div id="meHist"></div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- 历史详情弹窗 -->
+  <div class="modal hidden" id="histModal">
+    <div class="modal-box" style="width:340px;max-height:82%;overflow-y:auto;text-align:left">
+      <div id="histDetail"></div>
+      <button class="btn text" id="histClose">关闭</button>
+    </div>
+  </div>
+
+  <!-- 登录/注册弹窗 -->
+  <div class="modal hidden" id="authModal">
+    <div class="modal-box">
+      <div class="modal-tabs"><b id="mTabLogin" class="on">登录</b><b id="mTabReg">注册</b></div>
+      <input id="mUser" placeholder="用户名" autocomplete="username">
+      <input id="mPass" type="password" placeholder="密码（至少 6 位）" autocomplete="current-password">
+      <div class="err" id="mErr"></div>
+      <button class="btn" id="mOk">登录</button>
+      <button class="btn text" id="mCancel">取消</button>
+    </div>
+  </div>
+
+  <nav class="bottom-tabs">
+    <button class="tab active" data-tab="home"><span class="ti">🏠</span><span>首页</span></button>
+    <button class="tab" data-tab="color"><span class="ti">🎨</span><span>测色</span></button>
+    <button class="tab" data-tab="outfit"><span class="ti">👗</span><span>穿搭</span></button>
+    <button class="tab" data-tab="lab"><span class="ti">💇</span><span>形象</span></button>
+    <button class="tab" data-tab="me"><span class="ti">🙋</span><span>我的</span></button>
+  </nav>
+</main>
+
+<canvas id="work" hidden></canvas>
+<script src="color.js"></script>
+<script src="qc.js"></script>
+<script src="camera.js"></script>
+<script src="app-ui.js"></script>
+</body>
+</html>

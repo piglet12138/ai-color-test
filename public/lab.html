@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 形象测试 · 花纹/发色/发型/妆容/首饰</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <h1>AI 形象测试实验室</h1>
+  <p class="sub">上传一张正面照，一键测试<b>花纹 · 发色 · 发型 · 妆容 · 首饰</b>——看看每种变化穿戴在你身上的样子。</p>
+  <a class="demo-link" href="poster.html">做个色彩测试 →</a>
+  <a class="demo-link" href="index.html">穿搭试穿 →</a>
+</header>
+
+<main>
+  <section id="s1" class="card">
+    <h2>上传你的正面照</h2>
+    <p class="hint">建议：自然光、正面、露出脸与发际、纯色背景。每项测试约需 1 分钟。</p>
+    <label id="drop" class="dropzone">
+      <input id="file" type="file" accept="image/*" hidden>
+      <span id="dropText">点击或拖拽上传照片</span>
+    </label>
+    <div id="thumbWrap" class="hidden" style="margin-top:14px"><img id="thumb" class="demo-selfie" alt="预览"></div>
+    <div class="grid" style="margin-top:16px;grid-template-columns:1fr 1fr">
+      <label>性别<select id="pGender"><option value="女">女</option><option value="男">男</option></select></label>
+    </div>
+    <div id="testBtns" class="test-btns"></div>
+    <p class="hint" id="femaleHint" style="margin-top:10px">所有测试男女都可用；妆容 / 首饰会按性别给合适方案。</p>
+  </section>
+
+  <div id="results"></div>
+</main>
+
+<footer>上传照片 · 花纹/发色/发型/妆容/首饰测试　—　AI 形象测试 Demo</footer>
+
+<canvas id="work" hidden></canvas>
+<script src="auth.js"></script>
+<script src="color.js"></script>
+<script src="html2canvas.min.js"></script>
+<script src="lab.js"></script>
+</body>
+</html>

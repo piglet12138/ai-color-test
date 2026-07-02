@@ -1,0 +1,12 @@
+.env
+node_modules/
+cache/
+data/
+# eval：保留脚本与报告，忽略数据集图片与原始结果
+eval/faces/
+eval/*.jsonl
+eval/manifest.json
+eval/skin_lab.json
+eval/meta_pool.json
+public/demo-assets/*.png
+*.tgz

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>示例 · AI 测色穿搭试穿</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <h1>看一个完整示例</h1>
+  <p class="sub">一张照片，从<b>测色 → 搭配 → 在本人身上试穿</b>，全流程长这样。</p>
+  <a class="demo-link" href="index.html">换成我自己的照片试试 →</a>
+</header>
+
+<main>
+  <!-- 输入 -->
+  <section class="card">
+    <h2>① 她上传的照片</h2>
+    <img id="selfie" class="demo-selfie" src="demo-assets/selfie.jpg" alt="示例照片">
+  </section>
+
+  <!-- 报告 -->
+  <section class="card result">
+    <h2>② 她的色彩报告</h2>
+    <div id="diagOut">加载中…</div>
+  </section>
+
+  <!-- 搭配 -->
+  <section class="card result">
+    <h2>③ 为她准备的搭配</h2>
+    <div id="outfitOut"></div>
+  </section>
+
+  <!-- 试穿 -->
+  <section class="card result">
+    <h2>④ 换到她本人身上的效果</h2>
+    <p class="hint">同一个人、同一个姿势，只换了衣服。</p>
+    <div id="tryonOut"></div>
+  </section>
+
+  <div style="text-align:center;margin:8px 0 40px">
+    <a class="demo-link" href="index.html">现在试试你自己的 →</a>
+  </div>
+</main>
+
+<footer>上传照片 · 测色 · 搭配 · 上身试穿　—　AI 私人色彩顾问 Demo</footer>
+
+<script src="auth.js"></script>
+<script>
+const cn = (u) => ({ cool: '冷调', warm: '暖调', neutral: '中性' })[u] || u || '—';
+(async () => {
+  const report = await (await fetch('demo-assets/report.json')).json();
+  const { outfits, profile } = await (await fetch('demo-assets/outfits.json')).json();
+
+  // 报告
+  const m = report.metrics || {};
+  const sw = (h, cls = '') => `<div class="sw ${cls}" style="background:${h}"><span class="hex">${h}</span></div>`;
+  const v = report.observed || {};
+  const visionBlock = v.skin_hex ? `
+    <div class="vision-box">
+      <div class="lab">AI 看到的她</div>
+      <div class="vchips">
+        ${v.skin_hex ? `<span><i style="background:${v.skin_hex}"></i>肤色 ${v.skin_desc || ''}</span>` : ''}
+        ${v.hair_hex ? `<span><i style="background:${v.hair_hex}"></i>发色 ${v.hair_desc || ''}</span>` : ''}
+        ${v.eye_hex ? `<span><i style="background:${v.eye_hex}"></i>瞳色 ${v.eye_desc || ''}</span>` : ''}
+      </div>
+      ${report.profile ? `<div class="vmeta">${[report.profile.gender, report.profile.age_range ? report.profile.age_range + '岁' : '', report.profile.build && report.profile.build !== '不确定' ? '体型' + report.profile.build : '', report.profile.hair_style].filter(Boolean).join(' · ')}</div>` : ''}
+    </div>` : '';
+  document.getElementById('diagOut').innerHTML = visionBlock + `
+    <div class="season-head"><span class="name">${report.season || '—'}</span>
+      <span class="conf">匹配度 ${Math.round((report.confidence ?? 0) * 100)}%</span></div>
+    <div class="metrics">
+      <span>季型：${report.season_4 || '—'}</span><span>冷暖：${cn(report.undertone)}</span>
+      <span>明度：${m.value || '—'}</span><span>纯度：${m.chroma || '—'}</span><span>对比：${m.contrast || '—'}</span></div>
+    <div class="reason">${report.reasoning || ''}</div>
+    <div class="palette-row"><div class="lab">她的专属色板</div><div class="swatches">${(report.palette || []).map((h) => sw(h)).join('')}</div></div>
+    ${(report.avoid || []).length ? `<div class="palette-row"><div class="lab">不太适合</div><div class="swatches">${report.avoid.map((h) => sw(h, 'avoid')).join('')}</div></div>` : ''}
+    ${(report.tips || []).length ? `<div class="tips"><div class="lab">给她的建议</div><ul>${report.tips.map((t) => `<li>${t}</li>`).join('')}</ul></div>` : ''}`;
+
+  // 搭配
+  document.getElementById('outfitOut').innerHTML = outfits.map((o) => {
+    const items = (o.items || []).map((it) => `
+      <div class="item"><span class="chip" style="background:${it.hex || '#ccc'}"></span>
+        <span class="cat">${it.category || ''}</span><span>${it.desc || ''}</span>
+        ${it.price ? `<span class="price">¥${it.price}</span>` : ''}</div>`).join('');
+    const total = o.total_price || (o.items || []).reduce((s, it) => s + (+it.price || 0), 0);
+    return `<div class="outfit"><h3>${o.title || '方案'} <span class="occ">${o.occasion || ''}</span></h3>
+      <div class="items">${items}</div><div class="why">${o.why || ''}</div>
+      <div class="total">合计约 ¥${total}</div></div>`;
+  }).join('');
+
+  // 试穿（检测哪几张图存在）
+  const cells = await Promise.all(outfits.map(async (o, i) => {
+    const src = `demo-assets/tryon${i + 1}.png`;
+    const ok = (await fetch(src, { method: 'HEAD' })).ok;
+    return ok ? `<div class="tryon-cell"><div class="t-title">造型 ${i + 1}</div>
+      <div class="t-body"><div class="preview-wrap"><img src="${src}" alt="造型${i + 1}">
+      <span class="fidelity">👤 她本人换装</span></div></div></div>` : '';
+  }));
+  document.getElementById('tryonOut').innerHTML = `<div class="tryon-grid">${cells.filter(Boolean).join('')}</div>`;
+})().catch((e) => { document.getElementById('diagOut').innerHTML = '<div class="err">示例加载失败：' + e.message + '</div>'; });
+</script>
+</body>
+</html>

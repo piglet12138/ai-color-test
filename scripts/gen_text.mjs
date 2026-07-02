@@ -1,0 +1,14 @@
+import { readFile, writeFile } from 'node:fs/promises';
+const B='http://localhost:5178';
+const post=async(p,b)=>{const r=await fetch(B+p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});if(!r.ok)throw new Error(p+' '+r.status);return r.json();};
+const img='data:image/png;base64,'+(await readFile('/tmp/prev.png')).toString('base64');
+const features={skinHex:'#977c63',skinL:54,skinA:7,skinB:18,hairHex:'#3b2f28',hairL:22,contrast:32,palette:['#c2c0be','#cbc9c8','#9e9e9e','#2f363c']};
+const dir='/home/yyh/color-style-demo/public/demo-assets/';
+const report=await post('/api/diagnose',{features,image:img,note:'无'});
+await writeFile(dir+'report.json',JSON.stringify(report));
+console.log('season',report.season);
+console.log('reasoning has hex?', /#[0-9a-fA-F]{6}/.test(report.reasoning||''), '| has L=?', /L=|ΔE|Lab/.test(report.reasoning||''));
+const profile={gender:report.profile?.gender||'女',height:165,weight:52,build:report.profile?.build||'匀称'};
+const of=await post('/api/outfit',{season:report.season,palette:report.palette,profile,occasion:'通勤',budget:500});
+await writeFile(dir+'outfits.json',JSON.stringify({outfits:(of.outfits||[]).slice(0,3),profile}));
+console.log('outfits',of.outfits?.length,'DONE');

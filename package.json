@@ -1,0 +1,10 @@
+{
+  "name": "color-style-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AI 个人色彩 × 风格穿搭 × 试穿预览 — 轻量级 demo (DeepSeek + image2)",
+  "scripts": {
+    "start": "node server.mjs"
+  }
+}
