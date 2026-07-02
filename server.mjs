@@ -2,7 +2,7 @@
 // 全部走一个 OpenAI 兼容反代：GPT-5（多模态，看图+推理）+ gpt-image（生图）。
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { existsSync, readFileSync, mkdirSync, writeFileSync, readdirSync, statSync, unlinkSync } from 'node:fs';
+import { existsSync, readFileSync, mkdirSync, writeFileSync, readdirSync, statSync, unlinkSync, appendFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash, scryptSync, randomBytes, timingSafeEqual } from 'node:crypto';
@@ -48,6 +48,13 @@ function userByToken(req) {
   const s = sessions[t]; if (!s || s.exp < Date.now()) { if (s) { delete sessions[t]; saveJSON(SESS_F, sessions); } return null; }
   return Object.values(users).find((u) => u.id === s.userId) || null;
 }
+// 数据集采集（需明确同意；仅用于改进模型；可撤回删除）
+const DS_DIR = join(DATA_DIR, 'dataset');
+const DS_IMG = join(DS_DIR, 'img');
+mkdirSync(DS_IMG, { recursive: true });
+const DS_META = join(DS_DIR, 'samples.jsonl');
+const pick = (o, ks) => { const r = {}; for (const k of ks) if (o && o[k] != null) r[k] = o[k]; return r; };
+
 const histFile = (id) => join(HIST_DIR, id + '.json');
 function loadHist(id) { return loadJSON(histFile(id), []); }
 // 把历史条目里引用的 cache 图复制进 media（长期保存），改写为 umedia/ 相对 url
@@ -478,6 +485,38 @@ ${who}
       const data = await readFile(mf);
       res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=604800' });
       return res.end(data);
+    }
+
+    // ── 数据集采集（需同意，可撤回）──────────────────────
+    if (req.method === 'POST' && url.pathname === '/api/contribute') {
+      const b = await readBody(req);
+      if (b.consent !== true) return sendJSON(res, 400, { error: '需要明确同意才可收集' });
+      const m = String(b.image || '').match(/^data:image\/\w+;base64,(.+)$/);
+      if (!m) return sendJSON(res, 400, { error: '缺少有效照片' });
+      const id = randomBytes(9).toString('hex');
+      writeFileSync(join(DS_IMG, id + '.jpg'), Buffer.from(m[1], 'base64'));
+      const u = userByToken(req);
+      const meta = { id, ts: Date.now(), userId: u?.id || null,
+        ...pick(b.analysis || {}, ['season', 'undertone', 'value', 'chroma', 'skin_tone', 'gender']),
+        wb_conf: b.qc?.wb_conf ?? null, qc: b.qc?.verdict || null };
+      appendFileSync(DS_META, JSON.stringify(meta) + '\n');
+      return sendJSON(res, 200, { id });
+    }
+    if (req.method === 'POST' && url.pathname === '/api/contribute/revoke') {
+      const b = await readBody(req);
+      const u = userByToken(req);
+      const ids = new Set(b.ids || []);
+      const revokeAll = b.all === true && u;
+      let removed = 0;
+      const lines = existsSync(DS_META) ? readFileSync(DS_META, 'utf8').split('\n').filter(Boolean) : [];
+      const keep = [];
+      for (const ln of lines) {
+        let m; try { m = JSON.parse(ln); } catch { continue; }
+        if (ids.has(m.id) || (revokeAll && m.userId === u.id)) { try { unlinkSync(join(DS_IMG, m.id + '.jpg')); } catch {} removed++; }
+        else keep.push(ln);
+      }
+      writeFileSync(DS_META, keep.length ? keep.join('\n') + '\n' : '');
+      return sendJSON(res, 200, { removed });
     }
 
     if (url.pathname === '/api/health') {

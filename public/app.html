@@ -62,6 +62,7 @@
           <div class="field"><label>身高 cm</label><input id="pHeight" type="number" inputmode="numeric" placeholder="如 165"></div>
           <div class="field"><label>体重 kg</label><input id="pWeight" type="number" inputmode="numeric" placeholder="如 52"></div>
         </div>
+        <label class="a4-row" style="align-items:flex-start;margin-top:14px"><input type="checkbox" id="consent"><span style="font-size:12.5px;line-height:1.5">同意把我的照片与测色结果<b>匿名收集</b>，用于改进色彩测试模型（<a href="privacy.html" target="_blank">隐私说明</a>，可随时在「我的」撤回删除）。不勾选也能正常使用。</span></label>
       </div>
       <div class="actions">
         <button class="btn" id="startAnalyze">AI 测色，生成档案 →</button>
@@ -147,6 +148,7 @@
         <button class="btn secondary" id="meReupload">重新上传照片 / 重测</button>
         <button class="btn text" id="meLogout">退出登录</button>
       </div>
+      <div id="contribBox" style="margin-top:12px"></div>
       <div class="section-title"><h2>历史记录</h2><span id="meHistCount"></span></div>
       <div id="meHist"></div>
     </section>

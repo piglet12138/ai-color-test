@@ -61,6 +61,28 @@ function updateAuthUI() {
   $('meSub').textContent = state.user ? ('已登录 · ' + state.user) : '登录后可长期保存历史';
 }
 async function saveHistory(entry) { if (!state.token) return; try { await api('/api/history', 'POST', entry); toast('已存入历史'); } catch {} }
+// 数据采集（已同意时）——把照片+测色结果匿名贡献给评测集
+async function contribute(a) {
+  try {
+    const r = await api('/api/contribute', 'POST', { consent: true, image: state.thumb,
+      analysis: { season: a.season, undertone: a.undertone, value: a.value, chroma: a.chroma, skin_tone: a.skin_tone, gender: a.gender },
+      qc: state.qc ? { wb_conf: state.qc.wb_conf, verdict: state.qc.verdict } : null });
+    const ids = JSON.parse(localStorage.getItem('csd_contrib') || '[]'); ids.push(r.id); localStorage.setItem('csd_contrib', JSON.stringify(ids));
+    toast('感谢贡献，可在「我的」随时撤回');
+  } catch {}
+}
+function renderContrib() {
+  const el = $('contribBox'); if (!el) return;
+  const ids = JSON.parse(localStorage.getItem('csd_contrib') || '[]');
+  if (!ids.length && !state.token) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="card pad" style="font-size:13px;color:var(--muted)">你已贡献 <b style="color:var(--ink)">${ids.length}</b> 张照片用于改进模型（<a href="privacy.html" target="_blank">隐私说明</a>）。${(ids.length || state.token) ? ` · <a href="#" id="revoke" style="color:#c0392b">撤回并删除</a>` : ''}</div>`;
+  const rv = $('revoke');
+  if (rv) rv.onclick = async (e) => {
+    e.preventDefault(); if (!confirm('撤回并删除你贡献过的照片与记录？')) return;
+    try { const r = await api('/api/contribute/revoke', 'POST', { ids, all: !!state.token }); localStorage.removeItem('csd_contrib'); toast('已删除 ' + r.removed + ' 条'); renderContrib(); }
+    catch (err) { toast(err.message); }
+  };
+}
 // 登录/退出后刷新当前屏（修复：登录后历史不显示）
 function refreshCurrent() {
   const a = document.querySelector('.screen.active'); const s = a && a.dataset.screen;
@@ -117,6 +139,7 @@ $('startAnalyze').onclick = async () => {
     renderReport(); saveSS();
     goTo('report');
     saveHistory({ type: 'color', title: a.season || '测色档案', thumb: state.thumb, payload: a, images: [] });
+    if ($('consent') && $('consent').checked) contribute(a);
   } catch (e) { toast('分析失败：' + e.message); goTo('upload'); }
 };
 function animateSteps() {
@@ -218,6 +241,7 @@ async function renderMe() {
   updateAuthUI();
   $('meProfile').innerHTML = state.analysis ? profileCardHTML(state.analysis)
     : `<div class="summary-top"><div><h2>未建档</h2><p>上传照片测色后，这里显示你的形象档案。</p></div><div class="big-score">?</div></div>`;
+  renderContrib();
   const el = $('meHist');
   if (!state.token) { el.innerHTML = `<div class="card pad" style="color:var(--muted);font-size:13px">登录后可长期保存并查看历史。<a href="#" id="hl2">去登录</a></div>`; const l = $('hl2'); if (l) l.onclick = (e) => { e.preventDefault(); openAuth(); }; $('meHistCount').textContent = ''; return; }
   await loadHist();
