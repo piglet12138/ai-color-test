@@ -11,6 +11,15 @@ async function api(path, method = 'GET', body) {
   const r = await fetch(path.replace(/^\//, ''), { method, headers: h, body: body ? JSON.stringify(body) : undefined });
   const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status)); return d;
 }
+// 生图失败自动重试（上游偶发 502/超时；成功但连接断的会命中缓存秒回）
+async function genRetry(path, body, tries = 3, onRetry) {
+  let last;
+  for (let i = 0; i < tries; i++) {
+    try { return await api(path, 'POST', body); }
+    catch (e) { last = e; if (i < tries - 1) { if (onRetry) onRetry(i + 1); await new Promise((r) => setTimeout(r, 2500 * (i + 1))); } }
+  }
+  throw last;
+}
 function toast(t) { const el = $('toast'); el.textContent = t; el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); }
 function goTo(s) {
   document.querySelectorAll('.screen').forEach((el) => el.classList.toggle('active', el.dataset.screen === s));
@@ -266,7 +275,7 @@ $('runColor').onclick = async () => {
   const prog = $('colorProg'); let done = 0; prog.innerHTML = `<span class="mini-spin"></span> 生成色带 0/3…`;
   const urls = [];
   await Promise.all(rows.map(async ([, colors], i) => {
-    try { const d = await api('/api/strip', 'POST', { image: state.editImage, gender: state.profile.gender || '女', colors, subject: state.subject });
+    try { const d = await genRetry('/api/strip', { image: state.editImage, gender: state.profile.gender || '女', colors, subject: state.subject }, 3, () => { $('cstrip' + i).innerHTML = `<span class="mini-spin"></span> 重试中…`; });
       urls[i] = d.url; $('cstrip' + i).innerHTML = `<img src="${d.url}">`; }
     catch { $('cstrip' + i).innerHTML = `<span style="color:#c0392b;font-size:12px">失败</span>`; }
     done++; prog.innerHTML = done < 3 ? `<span class="mini-spin"></span> 生成色带 ${done}/3…` : '✅ 完成';
@@ -293,7 +302,7 @@ $('runOutfit').onclick = async () => {
     const urls = [];
     await Promise.all(looks.map(async (lk, i) => {
       const cols = (lk.colors || []).map((c) => c.hex);
-      try { const d = await api('/api/preview', 'POST', { image: state.editImage, outfit: lk.garments, palette: cols.length ? cols : palette, subject: state.subject, season: a.season, atmos: true }); urls[i] = d.url; $('olk' + i).innerHTML = `<img src="${d.url}">`; }
+      try { const d = await genRetry('/api/preview', { image: state.editImage, outfit: lk.garments, palette: cols.length ? cols : palette, subject: state.subject, season: a.season, atmos: true }, 3, () => { $('olk' + i).innerHTML = `<span class="mini-spin"></span> 重试中…`; }); urls[i] = d.url; $('olk' + i).innerHTML = `<img src="${d.url}">`; }
       catch { $('olk' + i).innerHTML = `<span style="color:#c0392b;font-size:12px">预览生成失败</span>`; }
       done++; prog.innerHTML = done < looks.length ? `<span class="mini-spin"></span> 生成上身预览 ${done}/${looks.length}…` : '✅ 完成';
     }));
@@ -321,7 +330,7 @@ async function runLab(key, label) {
       <div class="strip-box" id="lstrip-${key}"><span class="mini-spin"></span></div>
       <div class="strip-labels">${(a.options || []).map((c) => `<span>${c.hex ? `<i style="background:${c.hex}"></i>` : ''}${c.name}</span>`).join('')}</div></div>`;
     try {
-      const d = await api('/api/varystrip', 'POST', { image: state.editImage, type: key, gender: state.profile.gender || '女', options: a.options, subject: state.subject });
+      const d = await genRetry('/api/varystrip', { image: state.editImage, type: key, gender: state.profile.gender || '女', options: a.options, subject: state.subject }, 3, () => { $('lstrip-' + key).innerHTML = `<span class="mini-spin"></span> 重试中…`; });
       $('lstrip-' + key).innerHTML = `<img src="${d.url}">`;
       saveHistory({ type: key, title: a.title || label, thumb: state.thumb, payload: { options: a.options }, images: [d.url] });
     } catch { $('lstrip-' + key).innerHTML = `<span style="color:#c0392b;font-size:12px">生成失败，可重试</span>`; }
@@ -342,7 +351,7 @@ async function makeupFlow(sec, label) {
         <p style="margin:6px 0 0;color:var(--muted);font-size:12px">${p.why || ''}</p></div>`).join('')}</div>`;
     const urls = [];
     await Promise.all(picks.map(async (p, i) => {
-      try { const d = await api('/api/portrait', 'POST', { image: state.editImage, desc: p.desc, subject: state.subject, season: state.analysis?.season, atmos: true }); urls[i] = d.url; $('mk' + i).innerHTML = `<img src="${d.url}">`; }
+      try { const d = await genRetry('/api/portrait', { image: state.editImage, desc: p.desc, subject: state.subject, season: state.analysis?.season, atmos: true }, 3, () => { $('mk' + i).innerHTML = `<span class="mini-spin"></span> 重试中…`; }); urls[i] = d.url; $('mk' + i).innerHTML = `<img src="${d.url}">`; }
       catch { $('mk' + i).innerHTML = `<span style="color:#c0392b;font-size:12px">生成失败，可重试</span>`; }
     }));
     saveHistory({ type: 'makeup', title: '氛围妆 · ' + picks.map((p) => p.name).join('/'), thumb: state.thumb, payload: { picks }, images: urls.filter(Boolean) });
