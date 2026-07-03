@@ -69,7 +69,7 @@ const cn = (u) => ({ cool: '冷调', warm: '暖调', neutral: '中性' })[u] || 
     </div>` : '';
   document.getElementById('diagOut').innerHTML = visionBlock + `
     <div class="season-head"><span class="name">${report.season || '—'}</span>
-      <span class="conf">匹配度 ${Math.round((report.confidence ?? 0) * 100)}%</span></div>
+      <span class="conf">置信度 ${Math.round((report.confidence ?? 0) * 100)}%</span></div>
     <div class="metrics">
       <span>季型：${report.season_4 || '—'}</span><span>冷暖：${cn(report.undertone)}</span>
       <span>明度：${m.value || '—'}</span><span>纯度：${m.chroma || '—'}</span><span>对比：${m.contrast || '—'}</span></div>

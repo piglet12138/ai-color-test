@@ -151,9 +151,10 @@ function animateSteps() {
 // ── 渲染：档案/报告 ─────────────────────────────────────
 const sw = (h, cls = '') => `<div class="swatch"><i style="background:${h}"></i><span>${cls || ''}</span></div>`;
 function profileCardHTML(a) {
-  const conf = Math.round((a.confidence ?? 0.8) * 100);
+  const conf = Math.round((a.confidence ?? 0.7) * 100);
   return `<div class="summary-top"><div><h2>${a.season || '—'}</h2>
-    <p>肤色基调 ${a.skin_tone || '—'} · ${a.summary || ''}</p></div><div class="big-score">${conf}%</div></div>
+    <p>肤色基调 ${a.skin_tone || '—'} · ${a.summary || ''}</p></div>
+    <div style="text-align:center;flex:0 0 auto"><div class="big-score">${conf}%</div><div style="font-size:10px;color:var(--muted);margin-top:3px">置信度</div></div></div>
     <div class="palette" style="margin-top:12px">${(a.recommend || []).slice(0, 6).map((c) => `<div class="swatch"><i style="background:${c.hex}"></i><span>${c.name}</span></div>`).join('')}</div>`;
 }
 function renderReport() {

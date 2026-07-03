@@ -241,6 +241,7 @@ ${seasonsRef()}
   "chroma": "清透|柔和",
   "skin_tone": "综合一句（如：中性偏暖、浅而柔）",
   "season": "如：柔秋 (Soft Autumn)",
+  "confidence": "0.0-1.0，你对这个季型判断的把握：特征鲜明/光线好=高(0.8+)；中性难分/边界/光照一般=中(0.5-0.7)；模糊/暖光染黄/看不清=低(<0.5)。别都给同一个值。",
   "recommend": [{ "name": "奶茶杏", "hex": "#C8A98A" }, ...正好 6 个最显气色的颜色],
   "neutral":   [{ "name": "牛仔蓝", "hex": "#5B7A99" }, ...正好 6 个中性可穿的颜色],
   "avoid":     [{ "name": "荧光黄绿", "hex": "#C8D400" }, ...正好 6 个显疲惫/突兀要避开的颜色],
@@ -359,6 +360,11 @@ ${b.image ? '请先看这张自拍，再综合 CV 测量诊断季型并给报告
         ? `\n【拍摄质量提示】本图白平衡置信度较低(${conf})：冷暖判断可能受光照影响。请把 undertone/skin_tone 给成**区间/保守**表述（如"中性、偏暖但不确定"），confidence 不超过 0.6，并在 reshoot 里给一句"建议自然光下重拍、或用A4白纸参照"。额外输出字段 "reshoot"（一句话）与 "wb_conf":${conf}。`
         : '';
       const out = await chatJSON(COLOR_SYS + qcHint, '请分析这张证件照。', b.image ? [b.image] : []);
+      // 数值化置信度：模型自评为主；若有拍摄质量分则据其封顶（差照片不给高置信）
+      let c = Number(out.confidence);
+      if (!(c >= 0 && c <= 1)) c = 0.7;
+      if (conf != null) c = Math.min(c, 0.45 + 0.55 * conf);
+      out.confidence = Math.round(c * 100) / 100;
       if (conf != null) out.wb_conf = conf;
       return sendJSON(res, 200, out);
     }
