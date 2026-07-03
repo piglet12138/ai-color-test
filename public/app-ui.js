@@ -43,7 +43,8 @@ document.addEventListener('click', (e) => {
   const tab = e.target.closest('[data-tab]'); if (tab) return openTab(tab.dataset.tab);
 });
 function openTab(s) {
-  if (['color', 'outfit', 'lab', 'me'].includes(s) && !state.analysis && !state.editImage && s !== 'me') { toast('先上传照片建档～'); return goTo('welcome'); }
+  if (!state.token) { openAuth(); return; }                       // 登录优先
+  if (['color', 'outfit', 'lab'].includes(s) && !state.analysis && !state.editImage) { toast('先上传照片建档～'); return goTo('upload'); }
   goTo(s);
   if (s === 'me') renderMe();
   if (s === 'home') renderHome();
@@ -61,12 +62,25 @@ $('mOk').onclick = async () => {
     state.token = d.token; state.user = d.username; localStorage.setItem('csd_token', d.token);
     $('authModal').classList.add('hidden'); updateAuthUI(); toast('欢迎，' + d.username);
     const restored = await loadUserProfile();
-    if (restored) { renderHome(); goTo('home'); } else refreshCurrent();
+    if (restored) { renderMe(); goTo('me'); } else goTo('upload');
   } catch (e) { $('mErr').textContent = e.message; }
 };
-$('welcomeAuth').onclick = openAuth; $('welcomeLogin').onclick = openAuth;
+$('welcomeAuth').onclick = openAuth; $('welcomeStart').onclick = openAuth;
 $('meAuth').onclick = () => { if (!state.user) openAuth(); };
-$('meLogout').onclick = async () => { try { await api('/api/auth/logout', 'POST'); } catch {} state.token = ''; state.user = null; localStorage.removeItem('csd_token'); updateAuthUI(); renderMe(); toast('已退出'); };
+// 清空内存中的测评结果与页面残留（退出/切账号用）
+function resetSession() {
+  state.analysis = null; state.editImage = null; state.thumb = null; state.profile = {}; state.hist = []; state.qc = null; state.subject = null;
+  try { sessionStorage.removeItem(SS); } catch {}
+  ['reportBody', 'colorResult', 'outfitResult', 'labResults', 'homeHist', 'meHist', 'contribBox'].forEach((id) => { const el = $(id); if (el) el.innerHTML = ''; });
+  const cp = $('capPreview'); if (cp) cp.classList.add('hidden');
+  const qo = $('qcOut'); if (qo) { qo.classList.add('hidden'); qo.innerHTML = ''; }
+  if ($('capStatus')) $('capStatus').textContent = '';
+}
+$('meLogout').onclick = async () => {
+  try { await api('/api/auth/logout', 'POST'); } catch {}
+  state.token = ''; state.user = null; localStorage.removeItem('csd_token');
+  resetSession(); updateAuthUI(); goTo('welcome'); toast('已退出');
+};
 function updateAuthUI() {
   $('welcomeAuth').textContent = state.user || '登录';
   $('meAuth').textContent = state.user || '未登录';
@@ -399,29 +413,30 @@ async function makeupFlow(sec, label) {
 }
 
 // ── 初始化 ──────────────────────────────────────────────
-(function init() {
+(async function init() {
   // 支持 ?t=token 登录链接（用后即从地址栏抹掉）
   const tp = new URLSearchParams(location.search).get('t');
   if (tp) { state.token = tp; localStorage.setItem('csd_token', tp); history.replaceState(null, '', location.pathname + location.hash); }
-  // 恢复本次会话的照片/档案
-  try { const s = JSON.parse(sessionStorage.getItem(SS) || 'null'); if (s && s.editImage) { Object.assign(state, s); if (s.analysis) buildSubject(); } } catch {}
   renderLabBtns();
   // 时钟
   const setClock = () => { const d = new Date(); $('clock').textContent = d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); };
   try { setClock(); } catch {}
   updateAuthUI();
-  // 已有档案（本会话）→ 直接进首页
-  if (state.analysis) { renderReport(); renderHome(); goTo('home'); }
-  // 否则若已登录：恢复登录态 + 拉取服务端档案（登录后免重传、能看历史）
-  else if (state.token) {
-    api('/api/auth/me').then((d) => { state.user = d.username; updateAuthUI(); return loadUserProfile(); })
-      .then((restored) => { if (restored && !location.hash) { renderHome(); goTo('home'); } })
-      .catch(() => { state.token = ''; localStorage.removeItem('csd_token'); updateAuthUI(); });
-  }
-  // 支持 #screen 深链（也便于分享/回跳）
-  const h = location.hash.slice(1);
-  if (h && document.querySelector(`[data-screen="${h}"]`)) { goTo(h); if (h === 'home') renderHome(); if (h === 'me') renderMe(); }
-  // 深链到某条历史详情：#d=<id>
-  const dm = h.match(/^d=(.+)$/);
-  if (dm) { goTo('me'); renderMe().then(() => openHistDetail(dm[1])); }
+  // 登录优先：未登录一律停在登录页
+  if (!state.token) { goTo('welcome'); return; }
+  // 已登录：校验 token → 恢复档案 → 按“有无测评记录”路由
+  try {
+    const me = await api('/api/auth/me'); state.user = me.username; updateAuthUI();
+    // 本会话缓存优先（刚测完的照片/档案，免重复拉取）
+    try { const s = JSON.parse(sessionStorage.getItem(SS) || 'null'); if (s && s.analysis) { Object.assign(state, s); buildSubject(); renderReport(); } } catch {}
+    const has = state.analysis || await loadUserProfile();
+    // 深链优先（分享/回跳）
+    const h = location.hash.slice(1);
+    if (h && document.querySelector(`[data-screen="${h}"]`)) { goTo(h); if (h === 'home') renderHome(); if (h === 'me') renderMe(); return; }
+    const dm = h.match(/^d=(.+)$/);
+    if (dm) { goTo('me'); renderMe().then(() => openHistDetail(dm[1])); return; }
+    // 常规路由：有记录 → 「我的」；没有 → 上传照片跑测试
+    if (has) { renderMe(); goTo('me'); } else goTo('upload');
+    return;
+  } catch { state.token = ''; localStorage.removeItem('csd_token'); updateAuthUI(); goTo('welcome'); }
 })();
