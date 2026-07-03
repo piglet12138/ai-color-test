@@ -1,5 +1,7 @@
 // StyleLab 统一 App：引导建档 → 首页 → 测色/穿搭/形象 → 我的(历史)。全部走真实后端。
 const $ = (id) => document.getElementById(id);
+const show = (id) => { const el = $(id); if (el) el.classList.remove('hidden'); };
+const hide = (id) => { const el = $(id); if (el) el.classList.add('hidden'); };
 const phone = $('phone');
 const APP_SCREENS = new Set(['home', 'color', 'outfit', 'lab', 'me']);
 const SS = 'stylelab_state';
@@ -78,6 +80,16 @@ async function loadUserProfile() {
     const d = await api('/api/profile');
     if (d && d.analysis) {
       state.analysis = d.analysis; state.profile = d.profile || {}; state.thumb = d.thumb || null; state.editImage = d.editImage || null;
+      buildSubject(); renderReport(); saveSS();
+      return true;
+    }
+  } catch {}
+  // 回退：老用户没存服务端 profile 时，从最近一条测色历史重建档案（让其能直接看档案/历史，不必重传）
+  try {
+    const { items } = await api('/api/history');
+    const last = (items || []).find((e) => e.type === 'color' && e.payload);
+    if (last) {
+      state.analysis = last.payload; state.profile = last.payload.profile || state.profile; state.thumb = last.thumb || null;
       buildSubject(); renderReport(); saveSS();
       return true;
     }
