@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { createHash, scryptSync, randomBytes, timingSafeEqual } from 'node:crypto';
 import { seasonsRef, catalogRef, outfitRef } from './presets.mjs';
 import { MAKEUP_VIBES, vibesFor, IMAGE_TEMPLATE } from './presets-makeup.mjs';
-import { vibeLine } from './presets-vibe.mjs';
+import { vibeLine, makeupLine } from './presets-vibe.mjs';
 
 const __dir = fileURLToPath(new URL('.', import.meta.url));
 
@@ -425,6 +425,7 @@ ${who}
       const b = await readBody(req);
       if (!b.image || !b.desc) return sendJSON(res, 400, { error: '缺少照片或风格' });
       let prompt = IMAGE_TEMPLATE.replace('{desc}', b.desc);
+      if (b.season) prompt += `\n【季型妆色，务必用这套配色做眼影/腮红/唇】${makeupLine(b.season)}。妆要**比裸妆更精致、有存在感**，眼影用上述季型色系晕染出层次，但仍自然贴合本人、不假面。`;
       if (b.atmos && b.season) prompt += `\n【氛围】把成片处理成贴合季型的氛围人像 → ${vibeLine(b.season)}。可微调背景/光线/发丝以增强氛围，但脸与性别保持是本人。`;
       return sendJSON(res, 200, await editImage(b.image, prompt, '1024x1024', subjectLine(b.subject)));
     }
@@ -531,8 +532,8 @@ ${who}
       return res.end(data);
     }
 
-    // 静态文件
-    let p = url.pathname === '/' ? '/index.html' : url.pathname.replace(/\.\./g, '');
+    // 静态文件（根 = 旗舰 App；旧一键页仍在 /index.html）
+    let p = url.pathname === '/' ? '/app.html' : url.pathname.replace(/\.\./g, '');
     const file = join(__dir, 'public', p);
     const data = await readFile(file);
     res.writeHead(200, { 'Content-Type': MIME[extname(file)] || 'application/octet-stream' });
