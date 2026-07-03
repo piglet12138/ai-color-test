@@ -109,22 +109,25 @@ $('fileInput').onchange = (e) => {
   img.src = URL.createObjectURL(f);
 };
 async function ingest(srcCanvas) {
-  const srcW = srcCanvas.width, srcH = srcCanvas.height;
-  const max = 900, sc = Math.min(1, max / Math.max(srcW, srcH));
-  let work = document.createElement('canvas'); work.width = Math.round(srcW * sc); work.height = Math.round(srcH * sc);
-  work.getContext('2d').drawImage(srcCanvas, 0, 0, work.width, work.height);
-  let wbValid = false, wbNote = '';
-  if ($('a4Ref').checked && window.ColorQC) {
-    const patch = ColorQC.findWhitePatch(work);
-    if (patch) { const r = ColorQC.whiteBalance(work, patch); wbNote = r.note; if (r.valid) { work = r.canvas; wbValid = true; } }
-    else wbNote = '没找到合格的白纸区域（白纸要够大够亮、在画面里）';
-  }
-  const qc = window.ColorQC ? ColorQC.assess(work, { srcW, srcH, wbRefValid: wbValid }) : null;
-  state.qc = qc;
-  const { thumbURL, editURL } = await ColorCV.fromCanvas(work, $('work'));
-  state.thumb = thumbURL; state.editImage = editURL;
-  $('thumb').src = thumbURL; show('capPreview');
-  if (qc) renderQC(qc, wbNote); else toast('照片已就绪');
+  toast('正在处理照片…');
+  try {
+    const srcW = srcCanvas.width, srcH = srcCanvas.height;
+    const max = 900, sc = Math.min(1, max / Math.max(srcW, srcH));
+    let work = document.createElement('canvas'); work.width = Math.round(srcW * sc); work.height = Math.round(srcH * sc);
+    work.getContext('2d').drawImage(srcCanvas, 0, 0, work.width, work.height);
+    let wbValid = false, wbNote = '';
+    if ($('a4Ref') && $('a4Ref').checked && window.ColorQC) {
+      const patch = ColorQC.findWhitePatch(work);
+      if (patch) { const r = ColorQC.whiteBalance(work, patch); wbNote = r.note; if (r.valid) { work = r.canvas; wbValid = true; } }
+      else wbNote = '没找到合格的白纸区域（白纸要够大够亮、在画面里）';
+    }
+    let qc = null; try { qc = window.ColorQC ? ColorQC.assess(work, { srcW, srcH, wbRefValid: wbValid }) : null; } catch (e) { qc = null; }
+    state.qc = qc;
+    const { thumbURL, editURL } = await ColorCV.fromCanvas(work, $('work'));
+    state.thumb = thumbURL; state.editImage = editURL;
+    $('thumb').src = thumbURL; show('capPreview');
+    if (qc) renderQC(qc, wbNote); else toast('照片已就绪，点下方开始 →');
+  } catch (e) { console.error('ingest', e); toast('照片处理失败，请换一张或重试'); }
 }
 function renderQC(qc, wbNote) {
   const el = $('qcOut'); el.classList.remove('hidden');

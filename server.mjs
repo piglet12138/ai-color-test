@@ -542,7 +542,10 @@ ${who}
     let p = url.pathname === '/' ? '/app.html' : url.pathname.replace(/\.\./g, '');
     const file = join(__dir, 'public', p);
     const data = await readFile(file);
-    res.writeHead(200, { 'Content-Type': MIME[extname(file)] || 'application/octet-stream' });
+    const ext = extname(file);
+    // HTML/JS/CSS 不缓存（避免部署后新旧资源错配导致首次打开异常、刷新才好）
+    const cc = (ext === '.html' || ext === '.js' || ext === '.css') ? 'no-cache, must-revalidate' : 'public, max-age=3600';
+    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream', 'Cache-Control': cc });
     return res.end(data);
   } catch (e) {
     if (e.code === 'ENOENT') { res.writeHead(404); return res.end('Not found'); }
