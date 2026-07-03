@@ -48,13 +48,15 @@
           <span>· 正脸、露额头、表情放松</span>
           <span>· 有条件举一张 <b>A4 白纸</b> 在下巴旁，自动校色更准</span>
         </div>
+        <img src="capture-example.jpg" alt="拍照示例" style="width:100%;border-radius:12px;margin-top:10px" onerror="this.style.display='none'">
+        <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:4px">↑ 参考示例：自然光正脸、手持 A4 白纸</div>
         <label class="a4-row"><input type="checkbox" id="a4Ref"><span>我在画面里放了 A4 白纸（开启自动白平衡校色）</span></label>
         <div class="cap-btns">
           <button class="btn" id="camBtn">📷 拍照</button>
           <button class="btn secondary" id="uploadBtn">从相册上传</button>
         </div>
         <input id="fileInput" type="file" accept="image/*" hidden>
-        <div id="capPreview" class="hidden" style="margin-top:12px;text-align:center"><img id="thumb" class="demo-selfie"></div>
+        <div id="capPreview" class="hidden" style="margin-top:12px;text-align:center"><img id="thumb" class="demo-selfie"><div id="capStatus" style="font-size:12px;color:var(--muted);margin-top:6px"></div></div>
         <div id="qcOut" class="qc-out hidden"></div>
         <div class="field-grid" style="margin-top:12px">
           <div class="field"><label>性别</label><select id="pGender"><option value="">AI 判断</option><option>女</option><option>男</option></select></div>

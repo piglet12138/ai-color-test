@@ -54,6 +54,10 @@ const DS_IMG = join(DS_DIR, 'img');
 mkdirSync(DS_IMG, { recursive: true });
 const DS_META = join(DS_DIR, 'samples.jsonl');
 const pick = (o, ks) => { const r = {}; for (const k of ks) if (o && o[k] != null) r[k] = o[k]; return r; };
+// 每用户档案（测色结果+照片），登录后免重传
+const PROFILE_DIR = join(DATA_DIR, 'profiles');
+mkdirSync(PROFILE_DIR, { recursive: true });
+const profileFile = (id) => join(PROFILE_DIR, id + '.json');
 
 const histFile = (id) => join(HIST_DIR, id + '.json');
 function loadHist(id) { return loadJSON(histFile(id), []); }
@@ -492,6 +496,21 @@ ${who}
       const data = await readFile(mf);
       res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=604800' });
       return res.end(data);
+    }
+
+    // ── 每用户档案（登录后免重传，看到之前的档案）────────
+    if (url.pathname === '/api/profile') {
+      const u = userByToken(req); if (!u) return sendJSON(res, 401, { error: '未登录' });
+      if (req.method === 'GET') {
+        if (!existsSync(profileFile(u.id))) return sendJSON(res, 200, { profile: null });
+        try { return sendJSON(res, 200, JSON.parse(readFileSync(profileFile(u.id), 'utf8'))); } catch { return sendJSON(res, 200, { profile: null }); }
+      }
+      if (req.method === 'POST') {
+        const b = await readBody(req);
+        const data = { analysis: b.analysis || null, profile: b.profile || {}, thumb: String(b.thumb || '').slice(0, 500000), editImage: String(b.editImage || '').slice(0, 5000000), ts: Date.now() };
+        writeFileSync(profileFile(u.id), JSON.stringify(data));
+        return sendJSON(res, 200, { ok: true });
+      }
     }
 
     // ── 数据集采集（需同意，可撤回）──────────────────────

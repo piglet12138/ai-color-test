@@ -58,7 +58,8 @@ $('mOk').onclick = async () => {
     const d = await api('/api/auth/' + authMode, 'POST', { username: $('mUser').value, password: $('mPass').value });
     state.token = d.token; state.user = d.username; localStorage.setItem('csd_token', d.token);
     $('authModal').classList.add('hidden'); updateAuthUI(); toast('欢迎，' + d.username);
-    refreshCurrent();
+    const restored = await loadUserProfile();
+    if (restored) { renderHome(); goTo('home'); } else refreshCurrent();
   } catch (e) { $('mErr').textContent = e.message; }
 };
 $('welcomeAuth').onclick = openAuth; $('welcomeLogin').onclick = openAuth;
@@ -70,6 +71,19 @@ function updateAuthUI() {
   $('meSub').textContent = state.user ? ('已登录 · ' + state.user) : '登录后可长期保存历史';
 }
 async function saveHistory(entry) { if (!state.token) return; try { await api('/api/history', 'POST', entry); toast('已存入历史'); } catch {} }
+// 登录/返回时拉取用户已存的档案，免重传照片；有档案则直接进首页
+async function loadUserProfile() {
+  if (!state.token || state.analysis) return false;
+  try {
+    const d = await api('/api/profile');
+    if (d && d.analysis) {
+      state.analysis = d.analysis; state.profile = d.profile || {}; state.thumb = d.thumb || null; state.editImage = d.editImage || null;
+      buildSubject(); renderReport(); saveSS();
+      return true;
+    }
+  } catch {}
+  return false;
+}
 // 数据采集（已同意时）——把照片+测色结果匿名贡献给评测集
 async function contribute(a) {
   try {
@@ -99,21 +113,30 @@ function refreshCurrent() {
 }
 
 // ── 拍照 / 上传 + 质量门 + A4 白平衡 ─────────────────────
-$('camBtn').onclick = () => { if (!window.ColorCam) return toast('当前环境不支持相机，请用上传'); ColorCam.open((c) => ingest(c)); };
+const capStatus = (t) => { const el = $('capStatus'); if (el) el.textContent = t; };
+$('camBtn').onclick = () => { if (!window.ColorCam) return toast('当前环境不支持相机，请用上传'); ColorCam.open((c) => ingest(c, c.width, c.height)); };
 $('uploadBtn').onclick = () => $('fileInput').click();
-$('fileInput').onchange = (e) => {
-  const f = e.target.files[0]; if (!f) return;
+$('fileInput').onchange = (e) => { const f = e.target.files[0]; if (f) intakeFile(f); };
+function intakeFile(f) {
+  const url = URL.createObjectURL(f);
+  $('thumb').src = url; show('capPreview'); capStatus('读取中…');       // 立即显示预览
   const img = new Image();
-  img.onload = () => { const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; c.getContext('2d').drawImage(img, 0, 0); ingest(c); };
-  img.onerror = () => toast('读取失败，换一张试试');
-  img.src = URL.createObjectURL(f);
-};
-async function ingest(srcCanvas) {
-  toast('正在处理照片…');
+  img.onload = () => {
+    const ow = img.naturalWidth, oh = img.naturalHeight;
+    const s = Math.min(1, 1400 / Math.max(ow, oh));                       // 缩到 ≤1400 处理，省内存防卡顿
+    const c = document.createElement('canvas'); c.width = Math.round(ow * s); c.height = Math.round(oh * s);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    setTimeout(() => ingest(c, ow, oh), 30);                             // 让预览先渲染，再做重活
+  };
+  img.onerror = () => capStatus('这张图打不开（可能是 iPhone HEIC 格式）。请在相册选“兼容/JPEG”，或直接用「拍照」。');
+  img.src = url;
+}
+async function ingest(srcCanvas, origW, origH) {
+  capStatus('正在分析画质…');
   try {
-    const srcW = srcCanvas.width, srcH = srcCanvas.height;
-    const max = 900, sc = Math.min(1, max / Math.max(srcW, srcH));
-    let work = document.createElement('canvas'); work.width = Math.round(srcW * sc); work.height = Math.round(srcH * sc);
+    const srcW = origW || srcCanvas.width, srcH = origH || srcCanvas.height;
+    const max = 900, sc = Math.min(1, max / Math.max(srcCanvas.width, srcCanvas.height));
+    let work = document.createElement('canvas'); work.width = Math.round(srcCanvas.width * sc); work.height = Math.round(srcCanvas.height * sc);
     work.getContext('2d').drawImage(srcCanvas, 0, 0, work.width, work.height);
     let wbValid = false, wbNote = '';
     if ($('a4Ref') && $('a4Ref').checked && window.ColorQC) {
@@ -126,8 +149,9 @@ async function ingest(srcCanvas) {
     const { thumbURL, editURL } = await ColorCV.fromCanvas(work, $('work'));
     state.thumb = thumbURL; state.editImage = editURL;
     $('thumb').src = thumbURL; show('capPreview');
-    if (qc) renderQC(qc, wbNote); else toast('照片已就绪，点下方开始 →');
-  } catch (e) { console.error('ingest', e); toast('照片处理失败，请换一张或重试'); }
+    capStatus('✅ 照片已就绪，点下方「AI 测色，生成档案」开始');
+    if (qc) renderQC(qc, wbNote);
+  } catch (e) { console.error('ingest', e); capStatus('处理失败，请换一张或用「拍照」重试'); }
 }
 function renderQC(qc, wbNote) {
   const el = $('qcOut'); el.classList.remove('hidden');
@@ -151,6 +175,7 @@ $('startAnalyze').onclick = async () => {
     renderReport(); saveSS();
     goTo('report');
     saveHistory({ type: 'color', title: a.season || '测色档案', thumb: state.thumb, payload: a, images: [] });
+    if (state.token) api('/api/profile', 'POST', { analysis: state.analysis, profile: state.profile, thumb: state.thumb, editImage: state.editImage }).catch(() => {});
     if ($('consent') && $('consent').checked) contribute(a);
   } catch (e) { toast('分析失败：' + e.message); goTo('upload'); }
 };
@@ -372,11 +397,15 @@ async function makeupFlow(sec, label) {
   // 时钟
   const setClock = () => { const d = new Date(); $('clock').textContent = d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); };
   try { setClock(); } catch {}
-  // 恢复登录态
-  if (state.token) api('/api/auth/me').then((d) => { state.user = d.username; updateAuthUI(); }).catch(() => { state.token = ''; localStorage.removeItem('csd_token'); });
   updateAuthUI();
-  // 已有档案 → 直接进首页
+  // 已有档案（本会话）→ 直接进首页
   if (state.analysis) { renderReport(); renderHome(); goTo('home'); }
+  // 否则若已登录：恢复登录态 + 拉取服务端档案（登录后免重传、能看历史）
+  else if (state.token) {
+    api('/api/auth/me').then((d) => { state.user = d.username; updateAuthUI(); return loadUserProfile(); })
+      .then((restored) => { if (restored && !location.hash) { renderHome(); goTo('home'); } })
+      .catch(() => { state.token = ''; localStorage.removeItem('csd_token'); updateAuthUI(); });
+  }
   // 支持 #screen 深链（也便于分享/回跳）
   const h = location.hash.slice(1);
   if (h && document.querySelector(`[data-screen="${h}"]`)) { goTo(h); if (h === 'home') renderHome(); if (h === 'me') renderMe(); }

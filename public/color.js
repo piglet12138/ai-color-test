@@ -110,7 +110,7 @@ window.ColorCV = (() => {
     const ec = document.createElement('canvas');
     ec.width = Math.round(sw * es); ec.height = Math.round(sh * es);
     ec.getContext('2d').drawImage(source, 0, 0, ec.width, ec.height);
-    return { features, thumbURL, editURL: ec.toDataURL('image/png') };
+    return { features, thumbURL, editURL: ec.toDataURL('image/jpeg', 0.9) }; // JPEG：比 PNG 小很多，编码更快、更省缓存`
   }
   function fromFile(file, canvas) {
     return new Promise((resolve, reject) => {
