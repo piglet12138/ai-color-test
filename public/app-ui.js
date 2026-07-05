@@ -182,11 +182,12 @@ async function ingest(srcCanvas, origW, origH) {
 function renderQC(qc, wbNote) {
   const el = $('qcOut'); el.classList.remove('hidden');
   const color = qc.verdict === 'good' ? 'var(--green-deep)' : qc.verdict === 'edge' ? '#b7791f' : '#c0392b';
-  const label = qc.verdict === 'good' ? '质量良好 ✓' : qc.verdict === 'edge' ? '质量一般（结论会更保守）' : '质量偏低，建议重拍';
+  const label = qc.verdict === 'good' ? '质量良好 ✓' : qc.verdict === 'edge' ? '质量一般（可直接测，结论更保守）' : '质量偏低（可直接测，结论会更保守）';
   el.innerHTML = `<div style="font-weight:600;color:${color}">${label} · 置信度 ${Math.round(qc.wb_conf * 100)}%</div>
     <div class="qc-gates">${qc.gates.map((g) => `<span class="${g.ok ? 'ok' : 'no'}">${g.ok ? '✓' : '✗'} ${g.name}</span>`).join('')}</div>
     ${wbNote ? `<div class="qc-note">A4：${wbNote}</div>` : ''}
-    ${qc.reshoot.length ? `<div class="qc-note">建议：${qc.reshoot.slice(0, 2).join('；')}</div>` : ''}`;
+    ${qc.reshoot.length ? `<div class="qc-note">想更准可重拍（可选）：${qc.reshoot.slice(0, 2).join('；')}</div>` : ''}
+    ${qc.verdict !== 'good' ? `<div class="qc-note" style="color:var(--muted)">重拍是可选的——也可以直接点上方「AI 测色，生成档案」继续。</div>` : ''}`;
 }
 $('startAnalyze').onclick = async () => {
   if (!state.editImage) { toast('请先上传照片'); return; }
