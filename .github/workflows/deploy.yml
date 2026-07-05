@@ -1,0 +1,28 @@
+name: deploy
+
+# 推到 main 即自动部署到服务器（协作者无需服务器凭据）。
+# 服务器侧用 forced-command 部署密钥：SSH 进去只会执行 /root/deploy-color-style.sh
+#   → git fetch + reset --hard origin/main + systemctl restart color-style.service
+# 密钥即使从 workflow 日志泄漏，也只能触发这一条部署命令，不能拿到 shell。
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}      # 也可在 Actions 页手动触发
+
+concurrency:
+  group: deploy              # 避免并发部署互相打架
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger server-side deploy over SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          # 命令参数会被服务器 forced-command 忽略，仅作占位
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes \
+            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" deploy
